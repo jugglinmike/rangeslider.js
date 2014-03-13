@@ -109,10 +109,10 @@
         }
 
         this.identifier = 'js-' + pluginName + '-' + +new Date();
-        this.value      = parseInt(this.$element[0].value) || 0;
-        this.min        = parseInt(this.$element[0].getAttribute('min')) || 0;
-        this.max        = parseInt(this.$element[0].getAttribute('max')) || 0;
-        this.step       = parseInt(this.$element[0].getAttribute('step')) || 1;
+        this.value      = parseFloat(this.$element[0].value) || 0;
+        this.min        = parseFloat(this.$element[0].getAttribute('min')) || 0;
+        this.max        = parseFloat(this.$element[0].getAttribute('max')) || 0;
+        this.step       = parseFloat(this.$element[0].getAttribute('step')) || 1;
         this.$range     = $('<div class="' + this.options.rangeClass + '" />');
         this.$fill      = $('<div class="' + this.options.fillClass + '" />');
         this.$handle    = $('<div class="' + this.options.handleClass + '" />');
@@ -131,15 +131,13 @@
         this.handleDown = $.proxy(this.handleDown, this);
         this.handleMove = $.proxy(this.handleMove, this);
         this.handleEnd  = $.proxy(this.handleEnd, this);
+        this.handleResize = debounce($.proxy(delay, null, $.proxy(this.update, this), 300));
 
         this.init();
 
         // Attach Events
-        var _this = this;
-        this.$window.on('resize' + '.' + pluginName, debounce(function() {
-            // Simulate resizeEnd event.
-            delay(function() { _this.update(); }, 300);
-        }, 20));
+
+        this.$window.on('resize' + '.' + pluginName, this.handleResize);
         this.$document.on(this.options.startEvent, '#' + this.identifier, this.handleDown);
     }
 
@@ -149,6 +147,12 @@
         if (this.onInit && typeof this.onInit === 'function') {
             this.onInit();
         }
+    };
+
+    // Remove event handlers bound to global objects
+    Plugin.prototype.cleanup = function() {
+        this.$window.off('resize' + '.' + pluginName, this.handleResize);
+        this.$document.off(this.options.startEvent, '#' + this.identifier, this.handleDown);
     };
 
     Plugin.prototype.update = function() {
@@ -206,7 +210,7 @@
         value = this.getValueFromPosition(left);
 
         // Snap steps
-        if (this.step > 1) {
+        if (this.step !== 1) {
             value = Math.ceil((value) / this.step ) * this.step;
             left = this.getPositionFromValue(value);
         }
@@ -250,7 +254,7 @@
     Plugin.prototype.getValueFromPosition = function(pos) {
         var percentage, value;
         percentage = ((pos) / (this.maxHandleX)) * 100;
-        value = Math.ceil(((percentage/100) * (this.max - this.min)) + this.min);
+        value = this.step * Math.ceil((((percentage/100) * (this.max - this.min)) + this.min) / this.step);
 
         return value;
     };
